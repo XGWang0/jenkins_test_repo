@@ -8,5 +8,10 @@ pipeline {
 '''
       }
     }
+    stage('code_check') {
+      steps {
+        sh 'check code'
+      }
+    }
   }
 }
