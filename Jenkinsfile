@@ -9,7 +9,7 @@ pipeline {
     }
     stage('code_check') {
       steps {
-        sh 'check code'
+        sh './test.sh'
       }
     }
   }
