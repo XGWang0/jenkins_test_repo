@@ -3,7 +3,7 @@ pipeline {
   stages {
     stage('pull_source') {
       steps {
-        sh '''git pull original jenkins_test_repo
+        sh '''git pull original master
 
 '''
       }
