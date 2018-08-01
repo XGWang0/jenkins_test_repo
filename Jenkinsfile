@@ -91,19 +91,25 @@ pipeline {
 
     //pipeline的各个阶段场景
     stages {
-        stage('代码获取') {
+        stage("Download source code") {
             steps {
-            //根据param.server分割获取参数,包括IP,jettyPort,username,password
-            script {
-                def split=params.server.split(",")
-                serverIP=split[0]
-                jettyPort=split[1]
-                serverName=split[2]
-                serverPasswd=split[3]
-            }
-              echo "starting fetchCode from ${params.repoUrl}......"
-              // Get some code from a GitHub repository
-              //git credentialsId:CRED_ID, url:params.repoUrl, branch:params.repoBranch
+                // Failed to use Declarative pipeline, will cause pause forever even if you click ok button
+                script {
+                    env.RELEASE_SCOPE = input message: 'User input required', ok: 'Release!',
+                            parameters: [choice(name: 'RELEASE_SCOPE', choices: 'patch\nminor\nmajor', description: 'What is the release scope?')]
+                }
+                echo "${env.RELEASE_SCOPE}"
+                //根据param.server分割获取参数,包括IP,jettyPort,username,password
+                script {
+                    def split=params.server.split(",")
+                    serverIP=split[0]
+                    jettyPort=split[1]
+                    serverName=split[2]
+                    serverPasswd=split[3]
+                }
+                echo "starting fetchCode from ${params.repoUrl}......"
+                  // Get some code from a GitHub repository
+                  //git credentialsId:CRED_ID, url:params.repoUrl, branch:params.repoBranch
             }
         }
          stage('静态检查') {
