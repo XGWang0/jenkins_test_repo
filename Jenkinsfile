@@ -25,13 +25,17 @@ pipeline {
 	    string(name:'lineCoverage', defaultValue: '20', description: '单元测试代码覆盖率要求(%)，小于此值pipeline将会失败！')
 
 	    //若勾选在pipelie完成后会邮件通知测试人员进行验收
-	    booleanParam(name: 'isCommitQA',description: '是否邮件通知测试人员进行人工验收',defaultValue: false )
+	    booleanParam(name: 'isCommitQA',description: '是否邮件通知测试人员进行人工验收',defaultValue: true )
+	    // build user
+	    string(name:'buildUser', defaultValue: 'john', description:'The guy builded this project')
     }
+    /*
     //环境变量，初始确定后一般不需更改
     tools {
         sh  'sh -x '
         jdk   'jdk8'
     }
+    */
     //常量参数，初始确定后一般不需更改
     environment{
         //git服务全系统只读账号cred_id【参数值对外隐藏】
@@ -46,9 +50,12 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10')) 
     }
     //定期检查开发代码更新，工作日每晚4点做daily build
+    /*
     triggers {
         pollSCM('H 4 * * 1-5')
     }
+    */
+    /*
    //pipeline运行结果通知给触发者
     post{
         success{
@@ -80,6 +87,7 @@ pipeline {
             }
         }
     }
+    */
 
     //pipeline的各个阶段场景
     stages {
@@ -95,14 +103,14 @@ pipeline {
             }
               echo "starting fetchCode from ${params.repoUrl}......"
               // Get some code from a GitHub repository
-              git credentialsId:CRED_ID, url:params.repoUrl, branch:params.repoBranch
+              //git credentialsId:CRED_ID, url:params.repoUrl, branch:params.repoBranch
             }
         }
          stage('静态检查') {
-            options { timeout(time: 5m unit: 'SECONDS') }
+            options { timeout(time: 3, unit: 'SECONDS') }
             steps {
                 echo "starting static code checking ......"
-                sh 'sleep 5'
+                sh 'sleep 2'
                 /*
                 //sonar:sonar.QualityGate should pass
                 withSonarQubeEnv('SonarQube') {
@@ -124,11 +132,10 @@ pipeline {
         stage('单元测试') {
             steps {
               echo "starting unitTest......"
-	      sh "./test.sh"
+	          sh "/tmp/test.sh"
               /*
               //注入jacoco插件配置,clean test执行单元测试代码. All tests should pass.
               sh "mvn org.jacoco:jacoco-maven-plugin:prepare-agent -f ${params.pomPath} clean test -Dautoconfig.skip=true -Dmaven.test.skip=false -Dmaven.test.failure.ignore=true"
-              junit '**/target/surefire-reports/*.xml'
               //配置单元测试覆盖率要求，未达到要求pipeline将会fail,code coverage.LineCoverage>20%.
               jacoco changeBuildStatus: true, maximumLineCoverage:"${params.lineCoverage}"
               */
@@ -186,11 +193,13 @@ pipeline {
             }
         }
         stage('Parallel test') {
-		parallel {
-			failFast true
+            failFast true
+		    parallel {
         		stage('UI自动化测试') { 
         		     steps{
         		     echo "starting UITest......"
+        		     sh 'sleep 2'
+        		     sh 'date'
         		     //这个项目不需要UI层测试，UI自动化与接口测试的pipeline脚本类似
         		     }
         		 }
@@ -198,6 +207,8 @@ pipeline {
         		stage('性能自动化测试 ') { 
         		    steps{
         		         echo "starting performanceTest......"
+        		         sh 'sleep 3'
+        		         sh 'date'
         		        //视项目需要增加性能的冒烟测试，具体实现后续专文阐述
         		        }
         		}
@@ -205,17 +216,24 @@ pipeline {
         }
         stage('通知人工验收'){
             steps{
+                /*
+                //echo "Skip send email"
                 script{
-                    wrap([$class: 'BuildUser']) {
+                    if(params.isCommitQA==false){
+                        echo "不需要通知测试人员人工验收"
+                    }else {
+                        mail bcc: '', body: 'aaaaaaaaaaaaa', cc: '', from: 'xgwang@suse.com', replyTo: '', subject: 'test', to: 'xgwang@suse.com'
+                    }
+                }
+                */
+                script{
                     if(params.isCommitQA==false){
                         echo "不需要通知测试人员人工验收"
                     }else{
                         //邮件通知测试人员人工验收
                          mail to: "${QA_EMAIL}",
                          subject: "PineLine '${JOB_NAME}' (${BUILD_NUMBER})人工验收通知",
-                         body: "${BUILD_USER}提交的PineLine '${JOB_NAME}' (${BUILD_NUMBER})进入人工验收环节\n请及时前往${env.BUILD_URL}进行测试验收"
-                    }
-
+                         body: "params.buildUser提交的PineLine '${JOB_NAME}' (${BUILD_NUMBER})进入人工验收环节\n请及时前往${env.BUILD_URL}进行测试验收"
                     }
                 }
             }
